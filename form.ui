@@ -144,7 +144,7 @@
      <item>
       <widget class="QLabel" name="label_jobStatus">
        <property name="text">
-        <string>Idle</string>
+        <string></string>
        </property>
        <property name="alignment">
         <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
@@ -187,7 +187,7 @@
      <item>
       <widget class="QLabel" name="label_printerConnectionStatus">
        <property name="text">
-        <string>Idle</string>
+        <string></string>
        </property>
       </widget>
      </item>
@@ -342,7 +342,7 @@ Bed: NaN</string>
         <item>
          <widget class="QLabel" name="label_6">
           <property name="text">
-           <string>Time remaining:</string>
+           <string>Estimated time remaining:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -383,14 +383,14 @@ Bed: NaN</string>
          <number>0</number>
         </property>
         <item>
-         <widget class="QLabel" name="label_jobName">
+         <widget class="QLabel" name="label_3">
           <property name="text">
            <string>Job name:</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_3">
+         <widget class="QLabel" name="label_jobName">
           <property name="text">
            <string>TextLabel</string>
           </property>

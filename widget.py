@@ -2,12 +2,12 @@
 import os
 from pathlib import Path
 import sys
-import sched, time
 import platform
-from datetime import datetime
+from datetime import datetime, date, time, timedelta
+import time
 
 from PySide2.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QToolButton, QProgressBar, QFrame
-from PySide2.QtCore import QFile, QTimer, QThread
+from PySide2.QtCore import QFile, QTimer, QThread, QRunnable, QThreadPool
 from PySide2.QtUiTools import QUiLoader
 
 import requests
@@ -49,6 +49,12 @@ def TemperatureToString(temperature_c, fahrenheit):
     else:
         return str(round(temperature_c, decimal_places)) + " °C"
 
+def getSeparationChar():
+    if isWindows:
+        return '#'
+    else:
+        return '-'
+
 # configContents = None
 # ApiKey = None
 # DeviceIpAddress = None
@@ -70,6 +76,9 @@ OctoprintRequestUrl_Tool = OctoprintRequestUrl + "printer/tool"
 OctoprintRequestUrl_Bed = OctoprintRequestUrl + "printer/bed"
 
 class Widget(QWidget):
+    lastOperationReportedError = False
+    DefaultTimeoutIntervalAfterError = 3 # Seconds
+    Request_DefaultTimeoutPeriod = 1 # Seconds
     session = requests.Session()
 
     def __init__(self):
@@ -83,6 +92,9 @@ class Widget(QWidget):
         self.printStatus_progressBar = self.findChild(QProgressBar, 'printStatus_progressBar')
         self.label_printerTemps = self.findChild(QLabel, 'label_printerTemps')
         self.jobStatusFrame = self.findChild(QFrame, 'jobStatusFrame')
+        self.label_job_timeRemaining = self.findChild(QLabel, 'label_job_timeRemaining')
+        self.label_job_timeElapsed = self.findChild(QLabel, 'label_job_timeElapsed')
+        self.label_jobName = self.findChild(QLabel, 'label_jobName')
 
         self.session.headers.update({'X-Api-Key': ApiKey, 'content-type': 'application/json'})
         self.RefreshData()
@@ -120,37 +132,83 @@ class Widget(QWidget):
         self.timeLabel.setText(timeText)
         self.dateLabel.setText(dateText)
 
+    def s_RefreshData(self):
+        if(self.lastOperationReportedError):
+            # self.timer_refreshData.setInterval(self.DefaultTimeoutIntervalAfterError)
+            self.timer_refreshData.stop()
+            self.timer_refreshData.start(self.DefaultTimeoutIntervalAfterError)
+            self.lastOperationReportedError = False
+            return False
+        else:
+            self.timer_refreshData.setInterval(1000)
+            self.RefreshData()
+
     def RefreshData(self):
-        # Get Octoprint server version
-        response = self.session.get(OctoprintRequestUrl_Job)
-        # Verify job is running
-        if response.json()["state"] == "Printing":
-            self.label_jobStatus.setText("Printing")
-            progress = int(response.json()["progress"]["completion"]) * 100
-            self.printStatus_progressBar.setValue(progress)
-            self.jobStatusFrame.setVisible(True)
-        else:
-            self.label_jobStatus.setText("Idle")
-            self.jobStatusFrame.setVisible(False)
+        try:
+            response = self.session.get(OctoprintRequestUrl_Job, timeout=Request_DefaultTimeoutPeriod)
+            if response.status_code != 200:
+                print('HTTP', response.status_code)
+                self.SetToDisconnectedView()
+            else:
+                self.label_connectedStatus.setText("Connected")
 
-        info_tool_response = self.session.get(OctoprintRequestUrl_Tool)
-        info_bed_response = self.session.get(OctoprintRequestUrl_Bed)
-        tool_temp = TemperatureToString(info_tool_response.json()["tool0"]["actual"], False)
-        bed_temp = TemperatureToString(info_bed_response.json()["bed"]["actual"], False)
+                response_connection = self.session.get(OctoprintRequestUrl_Connection, timeout=Request_DefaultTimeoutPeriod)
+                self.label_printerConnectionStatus.setText(response_connection.json()["current"]["state"])
 
-        # Check if tool has a target temperature
-        if info_tool_response.json()["tool0"]["target"] != None or info_tool_response.json()["tool0"]["target"] != 0:
-            tool_target = "(Target: {0})".format(TemperatureToString(info_tool_response.json()["tool0"]["target"], False))
-        else:
-            tool_target = ""
+                data = response.json()
+                state = data["state"]
+                if state == "Printing":
+                    #self.label_jobStatus.setText("Printing")
+                    progress = int(data["progress"]["completion"]) * 100
+                    self.printStatus_progressBar.setValue(progress)
 
-        # Check if bed has a target temperature
-        if info_bed_response.json()["bed"]["target"] != None or info_bed_response.json()["bed"]["target"] != 0:
-            bed_target = "(Target: {0})".format(TemperatureToString(info_bed_response.json()["bed"]["target"], False))
-        else:
-            bed_target = ""
+                    secondsRemaining = data["progress"]["printTimeLeft"]
+                    secondsElapsed = data["progress"]["printTime"]
+
+                    futureTime = datetime.now() + timedelta(seconds=secondsRemaining)
+
+                    finishTimeAndDate = futureTime.strftime("%m/%d/%Y at %{0}I:%M %p".format(getSeparationChar()))
+                    elapsedTime = time.strftime('%H:%M:%S', time.gmtime(secondsElapsed))
+                    remainingTime = time.strftime('%H:%M:%S', time.gmtime(secondsRemaining))
+
+                    self.label_job_timeElapsed.setText(elapsedTime)
+                    self.label_job_timeRemaining.setText("{0} (on {1})".format(remainingTime, finishTimeAndDate))
+                    self.label_jobName.setText(data["job"]["file"]["name"])
+                    self.jobStatusFrame.setVisible(True)
+                else:
+                    self.jobStatusFrame.setVisible(False)
+
+                self.label_jobStatus.setText(state)
+
+                info_tool_response = self.session.get(OctoprintRequestUrl_Tool, timeout=Request_DefaultTimeoutPeriod)
+                info_bed_response = self.session.get(OctoprintRequestUrl_Bed, timeout=Request_DefaultTimeoutPeriod)
+                tool_temp = TemperatureToString(info_tool_response.json()["tool0"]["actual"], False)
+                bed_temp = TemperatureToString(info_bed_response.json()["bed"]["actual"], False)
+
+                # Check if tool has a target temperature
+                if info_tool_response.json()["tool0"]["target"] != None or info_tool_response.json()["tool0"]["target"] != 0:
+                    tool_target = "(Target: {0})".format(TemperatureToString(info_tool_response.json()["tool0"]["target"], False))
+                else:
+                    tool_target = ""
+
+                # Check if bed has a target temperature
+                if info_bed_response.json()["bed"]["target"] != None or info_bed_response.json()["bed"]["target"] != 0:
+                    bed_target = "(Target: {0})".format(TemperatureToString(info_bed_response.json()["bed"]["target"], False))
+                else:
+                    bed_target = ""
+
+                self.label_printerTemps.setText("Tool: {0} {1} \nBed: {2} {3}".format(tool_temp, tool_target, bed_temp, bed_target))
+        except:
+            print("Connection error")
+            self.SetToDisconnectedView()
         
-        self.label_printerTemps.setText("Tool: {0} {1} \nBed: {2} {3}".format(tool_temp, tool_target, bed_temp, bed_target))
+    
+    def SetToDisconnectedView(self):
+        self.label_jobStatus.setText("")
+        self.label_printerTemps.setText("")
+        self.label_connectedStatus.setText("Not connected")
+        self.jobStatusFrame.setVisible(False)
+        self.lastOperationReportedError = True
 
     def GetServerVersion(self):
         # Get Octoprint server version
