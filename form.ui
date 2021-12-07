@@ -144,7 +144,7 @@
      <item>
       <widget class="QLabel" name="label_jobStatus">
        <property name="text">
-        <string></string>
+        <string/>
        </property>
        <property name="alignment">
         <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
@@ -187,7 +187,7 @@
      <item>
       <widget class="QLabel" name="label_printerConnectionStatus">
        <property name="text">
-        <string></string>
+        <string/>
        </property>
       </widget>
      </item>
@@ -270,7 +270,7 @@ Bed: NaN</string>
       <bool>true</bool>
      </property>
      <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
+      <enum>QFrame::NoFrame</enum>
      </property>
      <property name="frameShadow">
       <enum>QFrame::Raised</enum>
