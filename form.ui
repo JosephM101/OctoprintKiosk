@@ -108,12 +108,18 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="toolButton_options">
+      <widget class="QToolButton" name="toolButton_menu">
+       <property name="minimumSize">
+        <size>
+         <width>56</width>
+         <height>18</height>
+        </size>
+       </property>
        <property name="text">
-        <string>Options</string>
+        <string>Menu</string>
        </property>
        <property name="popupMode">
-        <enum>QToolButton::MenuButtonPopup</enum>
+        <enum>QToolButton::InstantPopup</enum>
        </property>
       </widget>
      </item>
@@ -381,6 +387,9 @@ Bed: NaN</string>
         </property>
         <property name="topMargin">
          <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>4</number>
         </property>
         <item>
          <widget class="QLabel" name="label_3">
