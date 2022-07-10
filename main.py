@@ -78,8 +78,8 @@ OctoprintRequestUrl_Bed = OctoprintRequestUrl + "printer/bed"
 
 class Widget(QWidget):
     lastOperationReportedError = False
-    DefaultTimeoutIntervalAfterError = 3 # Seconds
-    Request_DefaultTimeoutPeriod = 1 # Seconds
+    DefaultTimeoutIntervalAfterError = 3  # Seconds
+    Request_DefaultTimeoutPeriod = 1  # Seconds
     session = requests.Session()
 
     actionText_disableHeaters = "Turn heaters off"
@@ -102,7 +102,7 @@ class Widget(QWidget):
         self.label_jobName = self.findChild(QLabel, 'label_jobName')
 
         self.menu = self.findChild(QToolButton, 'toolButton_menu')
-        #self.menu.
+        # self.menu.
         self.menuItems = QMenu()
         self.populateMenu()
 
@@ -161,7 +161,6 @@ class Widget(QWidget):
                 # Turn off heaters
                 self.Command_SetBedTemp(0)
                 self.Command_SetToolTemp(0)
-            
 
     def load_ui(self):
         loader = QUiLoader()
@@ -172,7 +171,7 @@ class Widget(QWidget):
         ui_file.close()
 
     def printTimeAndDate(self):
-        d = datetime.now()
+        # d = datetime.now()
         separation_char = ""
         if isWindows:
             separation_char = '#'
@@ -214,7 +213,7 @@ class Widget(QWidget):
             data = response.json()
             state = data["state"]
             if state == "Printing":
-                #self.label_jobStatus.setText("Printing")
+                # self.label_jobStatus.setText("Printing")
                 progress = int(data["progress"]["completion"]) * 100
                 self.printStatus_progressBar.setValue(progress)
 
